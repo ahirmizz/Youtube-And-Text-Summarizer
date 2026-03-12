@@ -18,6 +18,41 @@ st.set_page_config(
     layout="centered"
 )
 
+# Animated Gradient Background
+st.markdown("""
+<style>
+
+.stApp {
+    background: linear-gradient(-45deg, 
+            #7ec8c5, 
+            #58b0c8,
+            #a7ffd6,
+            #f9d786,
+            #f66f7c,
+            #8c79d1, 
+            #d068b6, 
+            #e67d7d
+    );
+    background-size: 800% 800%;
+    animation: gradient 30s ease infinite
+}
+
+/* gradient movement */
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # Allocate Memory - Initialize values in session state
 if "summary_data" not in st.session_state:
     st.session_state["summary_data"] = None
@@ -25,36 +60,53 @@ if "summary_data" not in st.session_state:
 if "text_summary" not in st.session_state:
     st.session_state["text_summary"] = None
 
-
 # Main tabs
-tab1, tab2 = st.tabs(["YouTube Summarizer", "Text Summarizer"])
+tab_options = ["YouTube Video Summarizer", "Text Summarizer"]
 
-# Tab 1 - YouTube Summarizer
+tab1, tab2 = st.tabs(tab_options)
+
+# Tab 1 - YouTube Video Summarizer
 with tab1:
     st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
 
-    st.markdown(
-        """<h1 style="color:#1f77b4; text-align:center;">
+    st.markdown("""
+        <h1 style="
+            color: black;
+            text-align: center;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        ">
             YouTube Video Summarizer
         </h1>
         """,
         unsafe_allow_html=True
     )
+    st.write("With the entered youtube link, the AI will give you insights and summarize the video's content.")
+
+    st.markdown("""
+<style>
+.main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* leave space for header */
+    flex-direction: column;
+}
+
+.block-container {
+    background: rgba(255,255,255,0.85);
+    padding: 5rem;
+    border-radius: 15px;
+    max-width: 900px;
+    width: 90%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+</style>
+""", unsafe_allow_html=True)
+
+    
 
     # Helper Functions 
-
-    """
-    Extracts the unique YouTube video ID from a given URL.
-
-    Supports multiple YouTube URL formats, including:
-    - Standard watch links (e.g., https://www.youtube.com/watch?v=VIDEO_ID)
-    - Shortened links (e.g., https://youtu.be/VIDEO_ID)
-    - Shorts links (e.g., https://youtube.com/shorts/VIDEO_ID)
-
-    Returns:
-        str: The video ID if found, otherwise returns the original URL stripped of whitespace.
-    """
-
     def extract_video_id(url):
         # List of regex patterns to match different YouTube URL formats
         patterns = [
@@ -72,27 +124,7 @@ with tab1:
         # If no pattern matched, returns the original URL stripped of extra spaces
         return url.strip()
     
-
-
-
-    """
-    Fetches basic metadata for a YouTube video using the oEmbed endpoint.
-
-    Retrieves publicly available video information without requiring an API key,
-    including:
-    - Video title
-    - Channel (author) name
-    - Thumbnail URL
-
-    Args:
-        video_id (str): The unique YouTube video ID.
-
-    Returns:
-        dict or None:
-            A dictionary containing "title", "author", and "thumbnail"
-            if the request is successful.
-            Returns None if the request fails or metadata cannot be retrieved.
-    """
+    
     def fetch_video_metadata(video_id):
         # Build YouTube oEmbed API URL using the video ID
         oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
@@ -224,3 +256,41 @@ with tab1:
                 if st.button("🔄 Reset"):
                     st.session_state.summary_data = None
                     st.rerun()
+
+
+
+# TAB 2 - TEXT SUMMARIZER
+with tab2:
+    st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
+
+    st.markdown("""
+        <h1 style="
+            color: black;
+            text-align: center;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        ">
+            Text Summarizer
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+    st.write("This is a...")
+
+    text_input = st.text_area(
+        "Paste your text below:",
+        height=200
+    )
+
+    if st.button("Summarize Text"):
+
+        if not text_input.strip():
+            st.warning("Please enter text.")
+        else:
+            with st.spinner("Summarizing..."):
+                summary = summarize_text(text_input)
+                st.session_state.text_summary = summary
+        
+        if st.session_state.text_summary:
+            st.success("Summary has been successfully generated!")
+            st.write(st.session_state.text_summary)
