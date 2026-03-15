@@ -18,6 +18,21 @@ st.set_page_config(
     layout="centered"
 )
 
+# Header Font
+st.markdown("""
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Inria+Sans:wght@700&display=swap');
+
+h1 {
+    font-family: 'Inria Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 # Animated Gradient Background
 st.markdown("""
 <style>
@@ -81,7 +96,13 @@ with tab1:
         """,
         unsafe_allow_html=True
     )
-    st.write("With the entered youtube link, the AI will give you insights and summarize the video's content.")
+    st.write("""
+            Turn long YouTube videos into clear insights in seconds.
+            This tool automatically extracts the video transcript
+            and generates a concise summary, key bullet points,
+            and actionable takeaways.
+            """
+    )
 
     st.markdown("""
 <style>
@@ -151,7 +172,11 @@ with tab1:
         return match.group(1).strip() if match else "Not found."
     
     # Input
-    url = st.text_input("Paste YouTube URL or Video ID")
+    url = st.text_input(
+        "Paste YouTube URL or Video ID:",
+        placeholder="Enter the YouTube URL you want to summarize..."
+    )
+    
     summarize_clicked = st.button("Summarize Video")
 
     if summarize_clicked:
@@ -275,11 +300,17 @@ with tab2:
         """,
         unsafe_allow_html=True
     )
-    st.write("This is a...")
+    st.write("""
+            Instantly condense long passages into meaningful summaries.
+            Paste any text and the tool will generate a clear overview
+            of the main ideas.
+            """
+    )
 
     text_input = st.text_area(
         "Paste your text below:",
-        height=200
+        placeholder="Enter the text you want to summarize...",
+        height=200,
     )
 
     if st.button("Summarize Text"):
