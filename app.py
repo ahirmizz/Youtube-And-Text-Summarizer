@@ -14,7 +14,8 @@ from summary import summarize_text
 
 # Streamlit page configuration
 st.set_page_config(
-    page_title="YouTube & Text Summarizer",
+    page_title="YouTube & Text Summarizer | Annabelle Hirmiz",
+    page_icon="play.png",
     layout="centered"
 )
 
