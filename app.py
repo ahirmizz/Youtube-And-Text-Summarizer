@@ -1,4 +1,11 @@
+import os
+import re
+import traceback
+import requests
 import streamlit as st
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
+from groq import Groq
+from summary import summarize_text
 
 # Streamlit page configuration
 st.set_page_config(
@@ -6,14 +13,6 @@ st.set_page_config(
     page_icon="favicon_icon.png",
     layout="centered"
 )
-
-import os
-import re
-import traceback
-import requests
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
-from groq import Groq
-from summary import summarize_text
 
 # Header Font
 st.markdown("""
