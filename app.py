@@ -56,6 +56,7 @@ div[data-baseweb="select"] * {
     );
     background-size: 800% 800%;
     animation: gradient 30s ease infinite;
+}
 
                   
 .block-container {
