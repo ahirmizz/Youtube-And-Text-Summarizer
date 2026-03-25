@@ -2,10 +2,13 @@ import os
 from groq import Groq
 
 def summarize_text(text):
+    """Generates a concise summary of input text using the Groq LLM API."""
 
-    client = Groq(
-        api_key=os.getenv("GROQ_API_KEY")
-    )
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("Missing GROQ_API_KEY")
+    
+    client = Groq(api_key=api_key)
 
     prompt = f"""
 Write a clear, concise summary of the text below.

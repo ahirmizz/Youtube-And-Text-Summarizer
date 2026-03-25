@@ -1,43 +1,48 @@
+# YouTube & Text Summarizer
+# Streamlit web app that extracts YouTube transcripts and uses Groq LLM
+# to generate detailed summaries, key points, and insights.
+
 import os
 import re
-import traceback
 import requests
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
 from groq import Groq
 from summary import summarize_text
 
-# Streamlit page configuration
+# ----- PAGE CONFIGURATION -----
 st.set_page_config(
     page_title="YouTube & Text Summarizer | Annabelle Hirmiz",
     page_icon="icon.png",
     layout="centered"
 )
 
-# Header Font
+# ----- FONT & STYLE -----
 st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inria+Sans:wght@400;700&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Inria+Sans:wght@700&display=swap');
-
-h1 {
-    font-family: 'Inria Sans', sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.5px;
+html, body, p, span, div {
+    font-family: 'Inria Sans', sans-serif !important;
+    font-weight: 400 !important;
 }
-</style>
-""", unsafe_allow_html=True)
 
+h1, h2, h3 {
+    font-family: 'Inria Sans', sans-serif !important;
+    font-weight: 700 !important;
+}
 
-# Animated Gradient Background
-st.markdown("""
-<style>
-
+/* Dropdown Menu Styling */            
+div[data-baseweb="select"] * {
+    font-weight: 700 !important;
+}
+        
+/* Background */     
 .stApp {
     display: flex;
     justify-content: center;
-    align-items: center;
-    height: 100vh;
+    align-items: flex-start;
+    padding-top: 40px;
         
     background: linear-gradient(-45deg, 
             #7ec8c5, 
@@ -50,19 +55,19 @@ st.markdown("""
             #e67d7d
     );
     background-size: 800% 800%;
-    animation: gradient 30s ease infinite
-}
+    animation: gradient 30s ease infinite;
 
+                  
 .block-container {
     background: rgba(255, 255, 255, 0.9);
     padding: 3rem;
     border-radius: 15px;
     max-width: 800px;
-    width: 100%
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    margin: auto;
 }
 
-/* gradient movement */
+/* Background gradient animation */
 @keyframes gradient {
     0% {
         background-position: 0% 50%;
@@ -74,26 +79,69 @@ st.markdown("""
         background-position: 0% 50%;
     }
 }
-
 </style>
 """, unsafe_allow_html=True)
 
-# Allocate Memory - Initialize values in session state
+
+# ----- SESSION STATE -----
 if "summary_data" not in st.session_state:
     st.session_state["summary_data"] = None
 
 if "text_summary" not in st.session_state:
     st.session_state["text_summary"] = None
 
-# Main tabs
-tab_options = ["YouTube Video Summarizer", "Text Summarizer"]
 
-tab1, tab2 = st.tabs(tab_options)
+# ----- SELECT MODE -----
+mode = st.selectbox(
+    "Select a Summarizer",
+    ["YouTube Video Summarizer", "Text Summarizer"]
+)
 
-# Tab 1 - YouTube Video Summarizer
-with tab1:
+# ----- HELPER FUNCTIONS -----
+def extract_video_id(url):
+    """Extracts YouTube video ID from multiple URL formats."""
+    patterns = [
+        r"v=([^&]+)",                       # Standard YouTube URL
+        r"youtu\.be/([^?&]+)",              # Shortened YouTube URL
+        r"youtube\.com/shorts/([^?&]+)"     # YouTube Shorts URL
+    ]
+
+    for p in patterns:
+        m = re.search(p, url)
+        if m:   
+            return m.group(1)
+        
+    return url.strip()                     # fallback if no match found
+    
+    
+def fetch_video_metadata(video_id):
+    """Fetches basic video metadata (title, author, and thumbnail) using YouTube oEmbed API."""
+    oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+    try:
+        r = requests.get(oembed_url)
+            
+        if r.status_code == 200:
+            data = r.json()
+            return {
+                "title": data.get("title"),
+                "author": data.get("author_name"),
+                "thumbnail": data.get("thumbnail_url")
+            }
+    except Exception:
+        return None
+
+def extract_section(title, text):
+    """Extracts a specific section from the LLM response based on its markdown header."""
+    pattern = rf"### {title}\n(.+?)(?=###|$)"
+    match = re.search(pattern, text, re.DOTALL)
+    return match.group(1).strip() if match else "Not found."
+
+
+# ----- YOUTUBE SUMMARIZER -----
+if mode == "YouTube Video Summarizer":
+    st.session_state.text_summary = None
+
     st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-
     st.markdown("""
         <h1 style="
             color: black;
@@ -113,75 +161,8 @@ with tab1:
             and actionable takeaways.
             """
     )
-
-    st.markdown("""
-<style>
-.main {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 80vh; /* leave space for header */
-    flex-direction: column;
-}
-
-.block-container {
-    background: rgba(255,255,255,0.85);
-    padding: 5rem;
-    border-radius: 15px;
-    max-width: 900px;
-    width: 90%;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-}
-</style>
-""", unsafe_allow_html=True)
-
     
-
-    # Helper Functions 
-    def extract_video_id(url):
-        # List of regex patterns to match different YouTube URL formats
-        patterns = [
-            r"v=([^&]+)",                        # Standard YouTube URL
-            r"youtu\.be/([^?&]+)",              # Shortened YouTube URL
-            r"youtube\.com/shorts/([^?&]+)"     # YouTube Shorts URL
-        ]
-
-        # Loops through each pattern to find a match
-        for p in patterns:
-            m = re.search(p, url)               # Search for pattern in the URL
-            if m:   
-                return m.group(1)               # If a mach is found, returns the captured video ID (first group)
-        
-        # If no pattern matched, returns the original URL stripped of extra spaces
-        return url.strip()
-    
-    
-    def fetch_video_metadata(video_id):
-        # Build YouTube oEmbed API URL using the video ID
-        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-        try:
-            r = requests.get(oembed_url)       # Sends request to YouTube
-            
-            # Check if request was successful (200 = OK)
-            if r.status_code == 200:
-                data = r.json()
-
-                # Returns selected metadata fields
-                return {
-                    "title": data.get("title"),
-                    "author": data.get("author_name"),
-                    "thumbnail": data.get("thumbnail_url")
-                }
-        except Exception:
-            return None 
-    
-
-    def extract_section(title, text):
-        pattern = rf"### {title}\n(.+?)(?=###|$)"
-        match = re.search(pattern, text, re.DOTALL)
-        return match.group(1).strip() if match else "Not found."
-    
-    # Input
+    # ----- USER INPUT -----
     url = st.text_input(
         "Paste YouTube URL or Video ID:",
         placeholder="Enter the YouTube URL you want to summarize..."
@@ -198,12 +179,13 @@ with tab1:
 
         video_id = extract_video_id(url)
 
+        # ----- TRANSCRIPT -----
         try:
             with st.spinner("Fetching transcript..."):
                 ytt_api = YouTubeTranscriptApi()
                 transcript_obj = ytt_api.fetch(video_id)
                 raw_list = transcript_obj.to_raw_data()
-                full_text = "".join([seg["text"] for seg in raw_list])
+                full_text = " ".join([seg["text"] for seg in raw_list])
 
         except TranscriptsDisabled:
             st.error("This video has no transcripts.")
@@ -215,7 +197,7 @@ with tab1:
             if "RequestBlocked" in str(e):
                 st.info(
                     "This video cannot be processed because YouTube blocks transcript access "
-                    "from cloud apps. Please enter a different video or apst ethe transcript manually."
+                    "from cloud apps. Please enter a different video or paste the transcript manually."
                 )
             else:
                 st.info("This video may not have captions available.")
@@ -232,8 +214,15 @@ with tab1:
 
         st.success("Transcript fetched!")
 
-        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        # ----- API KEY -----
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            st.error("Missing GROQ API KEY")
+            st.stop()
 
+        client = Groq(api_key=api_key)
+
+        # Prompt
         prompt = f"""
         Summarize the following YouTube transcript.
 
@@ -251,6 +240,7 @@ with tab1:
         {full_text}
         """
 
+        # ----- LLM -----
         with st.spinner("Generating summary..."):
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -259,7 +249,6 @@ with tab1:
             )
 
             summary_raw = response.choices[0].message.content
-
             metadata = fetch_video_metadata(video_id)
 
             st.session_state.summary_data = {
@@ -272,7 +261,7 @@ with tab1:
                 "insights": extract_section("Actionable Insights", summary_raw)
             }
 
-        # Display Results
+        # ----- DISPLAY RESULTS -----
         if st.session_state.summary_data:
             data = st.session_state.summary_data
 
@@ -311,13 +300,11 @@ with tab1:
                     st.rerun()
 
 
+# ----- TEXT SUMMARIZER -----
+elif mode == "Text Summarizer":
+        st.session_state.text_summary = None
 
-# TAB 2 - TEXT SUMMARIZER
-# TAB 2 - TEXT SUMMARIZER
-if not st.session_state.summary_data:
-    with tab2:
         st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-
         st.markdown("""
             <h1 style="
                 color: black;
