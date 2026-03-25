@@ -34,6 +34,11 @@ st.markdown("""
 <style>
 
 .stApp {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+        
     background: linear-gradient(-45deg, 
             #7ec8c5, 
             #58b0c8,
@@ -46,6 +51,15 @@ st.markdown("""
     );
     background-size: 800% 800%;
     animation: gradient 30s ease infinite
+}
+
+.block-container {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 3rem;
+    border-radius: 15px;
+    max-width: 800px;
+    width: 100%
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 /* gradient movement */
@@ -176,6 +190,8 @@ with tab1:
     summarize_clicked = st.button("Summarize Video")
 
     if summarize_clicked:
+        st.session_state.text_summary = None
+        
         if not url:
             st.error("Please enter a valid YouTube URL")
             st.stop()
@@ -193,9 +209,25 @@ with tab1:
             st.error("This video has no transcripts.")
             st.stop()
 
-        except Exception:
-            st.error("Failed to retrieve transcript.")
-            st.code(traceback.format_exc())
+        except Exception as e:
+            st.error("Unable to fetch transcript")
+
+            if "RequestBlocked" in str(e):
+                st.info(
+                    "This video cannot be processed because YouTube blocks transcript access "
+                    "from cloud apps. Please enter a different video or apst ethe transcript manually."
+                )
+            else:
+                st.info("This video may not have captions available.")
+            
+            manual_text = st.text_area("Paste transcript manually:", height=150)
+
+            if manual_text:
+                with st.spinner("Generating summary..."):
+                    summary = summarize_text(manual_text)
+                    st.session_state.text_summary = summary
+                    st.success("Summary generated from pasted transcript!")
+                    st.write(summary)
             st.stop()
 
         st.success("Transcript fetched!")
@@ -281,43 +313,45 @@ with tab1:
 
 
 # TAB 2 - TEXT SUMMARIZER
-with tab2:
-    st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
+# TAB 2 - TEXT SUMMARIZER
+if not st.session_state.summary_data:
+    with tab2:
+        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
 
-    st.markdown("""
-        <h1 style="
-            color: black;
-            text-align: center;
-            margin-top: 1rem;
-            margin-bottom: 2rem;
-        ">
-            Text Summarizer
-        </h1>
-        """,
-        unsafe_allow_html=True
-    )
-    st.write("""
-            Instantly condense long passages into meaningful summaries.
-            Paste any text and the tool will generate a clear overview
-            of the main ideas.
-            """
-    )
+        st.markdown("""
+            <h1 style="
+                color: black;
+                text-align: center;
+                margin-top: 1rem;
+                margin-bottom: 2rem;
+            ">
+                Text Summarizer
+            </h1>
+            """,
+            unsafe_allow_html=True
+        )
+        st.write("""
+                Instantly condense long passages into meaningful summaries.
+                Paste any text and the tool will generate a clear overview
+                of the main ideas.
+                """
+        )
 
-    text_input = st.text_area(
-        "Paste your text below:",
-        placeholder="Enter the text you want to summarize...",
-        height=200,
-    )
+        text_input = st.text_area(
+            "Paste your text below:",
+            placeholder="Enter the text you want to summarize...",
+            height=200,
+        )
 
-    if st.button("Summarize Text"):
+        if st.button("Summarize Text"):
 
-        if not text_input.strip():
-            st.warning("Please enter text.")
-        else:
-            with st.spinner("Summarizing..."):
-                summary = summarize_text(text_input)
-                st.session_state.text_summary = summary
-        
-        if st.session_state.text_summary:
-            st.success("Summary has been successfully generated!")
-            st.write(st.session_state.text_summary)
+            if not text_input.strip():
+                st.warning("Please enter text.")
+            else:
+                with st.spinner("Summarizing..."):
+                    summary = summarize_text(text_input)
+                    st.session_state.text_summary = summary
+            
+            if st.session_state.text_summary:
+                st.success("Summary has been successfully generated!")
+                st.write(st.session_state.text_summary)
